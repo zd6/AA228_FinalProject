@@ -59,12 +59,21 @@ class GridDelivery:
         configDict = parse_config(configFile)
 
         # initialize meta data
+        # current time stamp
         self.hour = configDict["START TIME"]
+        # rush hour start time
         self.rush_hour_start = configDict["RUSH START"]
+        # rush hour end time
         self.rush_hour_end = configDict["RUSH END"]
+        # how many layers of city resident around main road, 
+        # eg. 1 layer is only the houses on the main road, 
+        #     2 layers are houses on the next to the main road
         self.city_layers = configDict["CITY"]
+        # maximum number of packages environment can have
         self.max_package = configDict["MAX_PACKAGES"]
+        # package generation probabilities
         self.package_prob = configDict["PACKAGE"]
+        # 
         self.traffic_prob = configDict["TRAFFIC"]
         self.rewards = configDict["REWARDS"]
         self.policy = policy_dict(configDict["POLICY"])
@@ -73,7 +82,7 @@ class GridDelivery:
         # initialize maps
         self.roads = np.array(configDict["ROAD MAP"])
         self.m, self.n = self.roads.shape
-        # assert(self.m == self.n and self.m %2 == 1, "Sqaure map only")
+        assert(self.m == self.n and self.m %2 == 1)
         self.channels = CHANNELS
         self.grid = np.zeros((self.channels, self.m, self.n), dtype=np.int64)
         self.grid[ROAD,:,:] = self.roads
@@ -99,7 +108,7 @@ class GridDelivery:
     
 
     """
-    Initialize package dictionary
+    Initialize package dictionary and package queue
     """
     def _initialize_pkg(self):
         self.package_queue = deque()
@@ -107,6 +116,8 @@ class GridDelivery:
         self.packages_pos_to_id = {}
         self.generate_packages()
         for ID in self.packages.keys():
+            if not self.package_queue:
+                break
             pkgPos = self.package_queue.popleft()
             self.packages[ID] = pkgPos
             self.packages_pos_to_id[pkgPos] = ID
@@ -114,7 +125,9 @@ class GridDelivery:
         self.generate_packages()
 
 
-
+    """
+    Encode state into index
+    """
     def encode_state(self):
         package_idx = []
         for pos in self.packages.values():
@@ -122,6 +135,10 @@ class GridDelivery:
         cur_state_idx = [*self.truck] + package_idx
         return np.ravel_multi_index(cur_state_idx, self.state_vector_dims)
 
+
+    """
+    Find the anker index of current package position
+    """
     def find_nearest_anker_idx(self, pos):
         minDist = np.Inf
         minIdx = 0
@@ -133,7 +150,11 @@ class GridDelivery:
                 minIdx = idx
                 minDist = dist
         return minIdx
+    
 
+    """
+    Make one minute step into future with self.policy
+    """
     def step(self):
         reward = self._get_operational_cost()
         prev = tuple(self.truck)
@@ -149,15 +170,24 @@ class GridDelivery:
 
 
 
-
+    """
+    Get operational cost of this moment
+    """
     def _get_operational_cost(self):
         if self._is_rush():
             return self.rewards["DAY"]
         return self.rewards["NIGHT"]
 
+    """
+    Check if is rush hour
+    """
     def _is_rush(self):
         return self.rush_hour_start < self.hour < self.rush_hour_end
 
+
+    """
+    Try to move truck, considering traffic condition
+    """
     def move(self, action):
         if self.grid[ROAD, self.truck[0], self.truck[1]] == 1:
             if np.random.rand() < self.traffic_prob["HIGHWAY"][self._is_rush()]/100:
@@ -171,8 +201,11 @@ class GridDelivery:
         else:
             return self.truck
     
+    """
+    Generate packages until package queue is full
+    """
     def generate_packages(self):
-        while len(self.package_queue) < self.max_package:
+        for _ in range(self.m*self.n):
             i, j = np.random.randint(0, self.m, size = 2)
             if self.grid[PACKAGE, i, j] == 1 or self.truck == (i, j):
                 continue
@@ -183,7 +216,9 @@ class GridDelivery:
                 if np.random.rand() < self.package_prob["RURAL"][self._is_rush()]/100:
                     self.package_queue.append((i, j))
 
-
+    """
+    Upadate self.grid package layer when reaching a package
+    """
     def package_update(self, doneWithPos):
         ID = self.packages_pos_to_id[doneWithPos]
         self.grid[PACKAGE, self.truck[0], self.truck[1]] = 0
@@ -226,20 +261,8 @@ class GridDelivery:
         m, n = map.shape
         return x >= 0 and y >= 0 and x < m and y < n
     """
-    idx:
-    0 1 2 3 4 5 6 7 8
-    x,y:
-    (0,0) (0,1) ...
-    grid
-    0 1 2
-    3 4 5
-    6 7 8
+    Generate Gray scale grid maps for debug
     """
-    def _idx2xy(self, x, y):
-        return x*self.m + y
-    def _xy2idx(self, idx):
-        return idx//self.m, idx%self.m
-
     def plot(self):
         truckLayer = np.zeros_like(self.grid[ROAD])
         truckLayer[self.truck] = 2
