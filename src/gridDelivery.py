@@ -107,7 +107,9 @@ class GridDelivery:
                                (self.m-1, 0),  (self.m-1,center[1]), (self.m-1, self.n-1),\
                                (-1, -1)]
         self._initialize_pkg()
-        self.state_vector_dims = tuple([self.m, self.n] + [PACKAGE_APPR for _ in range(self.max_package)])
+        # state vector's multi-dimentional indexing:
+        # [isRushHour, TruckX, TruckY, [PkgsPos]*max_package]
+        self.state_vector_dims = tuple([2]+[self.m, self.n] + [PACKAGE_APPR for _ in range(self.max_package)])
     
 
     """
@@ -135,7 +137,7 @@ class GridDelivery:
         package_idx = []
         for pos in self.packages.values():
             package_idx.append(self.find_nearest_anker_idx(pos))
-        cur_state_idx = [*self.truck] + package_idx
+        cur_state_idx = [self._is_rush()] + [*self.truck] + package_idx
         return np.ravel_multi_index(cur_state_idx, self.state_vector_dims)
 
 
@@ -160,15 +162,15 @@ class GridDelivery:
     """
     def step(self):
         reward = self._get_operational_cost()
-        prev = tuple(self.truck)
         if self.grid[PACKAGE, self.truck[0], self.truck[1]]:
             reward += self.rewards["PACKAGE"]
             self.package_update(self.truck)
-        action = self.policy(self.encode_state())
+        prev = self.encode_state()
+        action = self.policy(prev)
         nextTruck = self.move(action)
         if self._in_bound(*nextTruck):
             self.truck = nextTruck
-        self.hour += 1/60
+        self.hour  = (self.hour + 1/60)%24
         return prev, action, reward, self.encode_state()
 
 
