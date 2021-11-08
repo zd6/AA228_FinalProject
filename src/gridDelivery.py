@@ -97,6 +97,10 @@ class GridDelivery:
         self._initialize_pkg()
         self.state_vector_dims = tuple([self.m, self.n] + [PACKAGE_APPR for _ in range(self.max_package)])
     
+
+    """
+    Initialize package dictionary
+    """
     def _initialize_pkg(self):
         self.package_queue = deque()
         self.packages = {i:(-1,-1) for i in range(self.max_package)}
@@ -169,14 +173,15 @@ class GridDelivery:
     
     def generate_packages(self):
         while len(self.package_queue) < self.max_package:
-            for i in range(self.m):
-                for j in range(self.n):
-                    if self.grid[CITY, i, j] == 1:
-                        if np.random.rand() < self.package_prob["CITY"][self._is_rush()]/100:
-                            self.package_queue.append((i, j))
-                    else:
-                        if np.random.rand() < self.package_prob["RURAL"][self._is_rush()]/100:
-                            self.package_queue.append((i, j))
+            i, j = np.random.randint(0, self.m, size = 2)
+            if self.grid[PACKAGE, i, j] == 1 or self.truck == (i, j):
+                continue
+            if self.grid[CITY, i, j] == 1:
+                if np.random.rand() < self.package_prob["CITY"][self._is_rush()]/100:
+                    self.package_queue.append((i, j))
+            else:
+                if np.random.rand() < self.package_prob["RURAL"][self._is_rush()]/100:
+                    self.package_queue.append((i, j))
 
 
     def package_update(self, doneWithPos):
