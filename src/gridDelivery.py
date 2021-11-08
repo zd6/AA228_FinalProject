@@ -73,9 +73,12 @@ class GridDelivery:
         self.max_package = configDict["MAX_PACKAGES"]
         # package generation probabilities
         self.package_prob = configDict["PACKAGE"]
-        # 
+        # traffic probablity at city cell and during rush hour 
+        # the truck has self.traffic_prob["CITY"][0](%) chance to stuck at its position
         self.traffic_prob = configDict["TRAFFIC"]
+        # reward function on operational cost and pickup earnings
         self.rewards = configDict["REWARDS"]
+        # policy for step function
         self.policy = policy_dict(configDict["POLICY"])
 
 
