@@ -1,0 +1,16 @@
+{
+    "START TIME": 0,
+    "RUSH START": 9,
+    "RUSH END":18,
+    "ROAD MAP": [[0,0,1,0,0], 
+                 [0,0,1,0,0], 
+                 [1,1,1,1,1],
+                 [0,0,1,0,0],
+                 [0,0,1,0,0]],
+    "CITY": 2,
+    "MAX_PACKAGES": 3,
+    "PACKAGE": {"CITY": [5, 2], "RURAL":[2, 0]},
+    "TRAFFIC": {"HIGHWAY": [60, 20], "STREET":[20, 0]},
+    "REWARDS": {"NIGHT": -10, "DAY":-5, "PACKAGE":100},
+    "POLICY": "RANDOM"
+}
