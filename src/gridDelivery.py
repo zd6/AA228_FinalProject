@@ -8,7 +8,6 @@ CITY = 1
 PACKAGE = 2
 PACKAGE_APPR = 10
 directions = [[-1,0],[1,0],[0,-1],[0,1]]
-
 class GridDelivery:
     """
     Class contructor takes dimensions m and n by defualt they will be 5 and 5
@@ -91,21 +90,7 @@ class GridDelivery:
         self.grid[ROAD,:,:] = self.roads
         self._initialize_city()
         # initialize truck and packages
-        center = (self.m//2, self.n//2)
-        """      
-        [
-            x 0 x 0 x
-            0 0 0 0 0
-            x 0 x 0 x
-            0 0 0 0 0
-            x 0 x 0 x
-        ]
-        """
         self.truck = (self.m//2, self.n//2)
-        self.package_ankers = [(0, 0),         (0, center[1]),       (0, self.n-1),\
-                               (center[0], 0), center,               (center[0], self.n-1),\
-                               (self.m-1, 0),  (self.m-1,center[1]), (self.m-1, self.n-1),\
-                               (-1, -1)]
         self._initialize_pkg()
         # state vector's multi-dimentional indexing:
         # [isRushHour, TruckX, TruckY, [PkgsPos]*max_package]
@@ -119,7 +104,7 @@ class GridDelivery:
         self.package_queue = deque()
         self.packages = {i:(-1,-1) for i in range(self.max_package)}
         self.packages_pos_to_id = {}
-        self.generate_packages()
+        self.generate_packages(num = self.max_package)
         for ID in self.packages.keys():
             if not self.package_queue:
                 break
@@ -127,7 +112,6 @@ class GridDelivery:
             self.packages[ID] = pkgPos
             self.packages_pos_to_id[pkgPos] = ID
             self.grid[PACKAGE, pkgPos[0], pkgPos[1]] = 1
-        self.generate_packages()
 
 
     """
@@ -136,26 +120,14 @@ class GridDelivery:
     def encode_state(self):
         package_idx = []
         for pos in self.packages.values():
-            package_idx.append(self.find_nearest_anker_idx(pos))
+            package_idx.append(self.pos2idx(pos))
         cur_state_idx = [self._is_rush()] + [*self.truck] + package_idx
         return np.ravel_multi_index(cur_state_idx, self.state_vector_dims)
 
+    def pos2idx(self, pos):
+        return (pos[0]+1)*(pos[1]+1)
 
-    """
-    Find the anker index of current package position
-    """
-    def find_nearest_anker_idx(self, pos):
-        minDist = np.Inf
-        minIdx = 0
-        if pos == (-1,-1):
-            return 9
-        for idx, (x, y) in enumerate(self.package_ankers):
-            dist = abs(pos[0] - x) + abs(pos[1] - y)
-            if dist < minDist:
-                minIdx = idx
-                minDist = dist
-        return minIdx
-    
+
 
     """
     Make one minute step into future with self.policy
@@ -209,18 +181,23 @@ class GridDelivery:
     """
     Generate packages until package queue is full
     """
-    def generate_packages(self):
-        for _ in range(self.m*self.n):
-            i, j = np.random.randint(0, self.m, size = 2)
-            if self.grid[PACKAGE, i, j] == 1 or self.truck == (i, j):
-                continue
-            if self.grid[CITY, i, j] == 1:
-                if np.random.rand() < self.package_prob["CITY"][self._is_rush()]/100:
-                    self.package_queue.append((i, j))
-            else:
-                if np.random.rand() < self.package_prob["RURAL"][self._is_rush()]/100:
-                    self.package_queue.append((i, j))
-
+    def generate_packages(self, num):
+        # for _ in range(self.m*self.n):
+        #     i, j = np.random.randint(0, self.m, size = 2)
+        #     if self.grid[PACKAGE, i, j] == 1 or self.truck == (i, j):
+        #         continue
+        #     if self.grid[CITY, i, j] == 1:
+        #         if np.random.rand() < self.package_prob["CITY"][self._is_rush()]/100:
+        #             self.package_queue.append((i, j))
+        #     else:
+        #         if np.random.rand() < self.package_prob["RURAL"][self._is_rush()]/100:
+        #             self.package_queue.append((i, j))
+        rand = np.random.random(size = (self.m, self.n))
+        candidates =np.argwhere(rand > self.package_map and self.grid[PACKAGE] == 0)
+        np.random.choice(candidates, min(num, candidates.size()), replace=False)
+        self.package_queue.append(candidates)
+    
+    
     """
     Upadate self.grid package layer when reaching a package
     """
@@ -252,6 +229,7 @@ class GridDelivery:
                     if self._2d_is_valid(x+d1, y+d2, self.city_map, checkV = 0):
                         self.city_map[x+d1, y+d2] = 1
             layer += 1
+        self.package_map = np.where(self.city_map == 1, self.package_prob["CITY"], self.package_prob["RURAL"])
         self.grid[CITY,:,:] = self.city_map
     
     """
@@ -276,3 +254,40 @@ class GridDelivery:
         plt.subplot(1,2,2)
         plt.imshow(self.grid[CITY] + self.grid[PACKAGE]*2, cmap="gray")
         plt.show()
+
+class GridDeliveryAncker(GridDelivery):
+    def __init__(self):
+        super().__init__()
+    def config(self, configFile = "config.json"):
+        super().config(configFile=configFile)
+        center = (self.m//2, self.n//2)
+        """      
+        [
+            x 0 x 0 x
+            0 0 0 0 0
+            x 0 x 0 x
+            0 0 0 0 0
+            x 0 x 0 x
+        ]
+        """
+        self.package_ankers = [(0, 0),         (0, center[1]),       (0, self.n-1),\
+                               (center[0], 0), center,               (center[0], self.n-1),\
+                               (self.m-1, 0),  (self.m-1,center[1]), (self.m-1, self.n-1),\
+                               (-1, -1)]
+        """
+    Find the anker index of current package position
+    """
+    def find_nearest_anker_idx(self, pos):
+        minDist = np.Inf
+        minIdx = 0
+        if pos == (-1,-1):
+            return 9
+        for idx, (x, y) in enumerate(self.package_ankers):
+            dist = abs(pos[0] - x) + abs(pos[1] - y)
+            if dist < minDist:
+                minIdx = idx
+                minDist = dist
+        return minIdx
+    
+
+    
