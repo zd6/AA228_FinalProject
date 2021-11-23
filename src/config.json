@@ -9,7 +9,7 @@
                  [0,0,1,0,0]],
     "CITY": 2,
     "MAX_PACKAGES": 3,
-    "PACKAGE": {"CITY": [50, 20], "RURAL":[20, 0]},
+    "PACKAGE": {"CITY": 20, "RURAL":10},
     "TRAFFIC": {"HIGHWAY": [60, 1], "STREET":[20, 0]},
     "REWARDS": {"NIGHT": -10, "DAY":-5, "PACKAGE":100},
     "POLICY": "RANDOM"

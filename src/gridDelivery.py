@@ -6,6 +6,8 @@ CHANNELS = 3
 ROAD = 0
 CITY = 1
 PACKAGE = 2
+DAY = 0
+NIGHT = 1
 PACKAGE_APPR = 10
 directions = [[-1,0],[1,0],[0,-1],[0,1]]
 class GridDelivery:
@@ -94,7 +96,7 @@ class GridDelivery:
         self._initialize_pkg()
         # state vector's multi-dimentional indexing:
         # [isRushHour, TruckX, TruckY, [PkgsPos]*max_package]
-        self.state_vector_dims = tuple([2]+[self.m, self.n] + [PACKAGE_APPR for _ in range(self.max_package)])
+        self.state_vector_dims = tuple([2]+[self.m, self.n] + [self.m*self.n for _ in range(self.max_package)])
     
 
     """
@@ -125,7 +127,7 @@ class GridDelivery:
         return np.ravel_multi_index(cur_state_idx, self.state_vector_dims)
 
     def pos2idx(self, pos):
-        return (pos[0]+1)*(pos[1]+1)
+        return (pos[0]+1)*(pos[1]+1)-1
 
 
 
@@ -193,9 +195,10 @@ class GridDelivery:
         #         if np.random.rand() < self.package_prob["RURAL"][self._is_rush()]/100:
         #             self.package_queue.append((i, j))
         rand = np.random.random(size = (self.m, self.n))
-        candidates =np.argwhere(rand > self.package_map and self.grid[PACKAGE] == 0)
-        np.random.choice(candidates, min(num, candidates.size()), replace=False)
-        self.package_queue.append(candidates)
+        candidates =np.argwhere(rand > self.package_map * self.grid[PACKAGE])
+        cand_idx = np.random.choice(range(len(candidates)), min(num, candidates.shape[0]), replace=False)
+        for cand in cand_idx:
+            self.package_queue.append(tuple(candidates[cand]))
     
     
     """
@@ -206,7 +209,7 @@ class GridDelivery:
         self.grid[PACKAGE, self.truck[0], self.truck[1]] = 0
         del self.packages_pos_to_id[doneWithPos]
         if not self.package_queue:
-            self.generate_packages()
+            self.generate_packages(1)
         self.packages[ID] = self.package_queue.popleft()
         self.packages_pos_to_id[self.packages[ID]] = ID
         self.grid[PACKAGE, self.packages[ID][0], self.packages[ID][1]] = 1
@@ -229,6 +232,7 @@ class GridDelivery:
                     if self._2d_is_valid(x+d1, y+d2, self.city_map, checkV = 0):
                         self.city_map[x+d1, y+d2] = 1
             layer += 1
+        self.package_map = np.zeros((2, self.m, self.n))
         self.package_map = np.where(self.city_map == 1, self.package_prob["CITY"], self.package_prob["RURAL"])
         self.grid[CITY,:,:] = self.city_map
     

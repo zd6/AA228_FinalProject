@@ -8,3 +8,5 @@ def parse_config(configFile):
 def policy_dict(policy_name):
     if policy_name == "RANDOM":
         return random_policy
+
+def 2
