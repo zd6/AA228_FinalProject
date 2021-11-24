@@ -2,14 +2,14 @@ import numpy as np
 from utils import *
 from collections import deque
 import matplotlib.pyplot as plt
-CHANNELS = 3
-ROAD = 0
-CITY = 1
-PACKAGE = 2
-DAY = 0
-NIGHT = 1
-PACKAGE_APPR = 10
-directions = [[-1,0],[1,0],[0,-1],[0,1]]
+# CHANNELS = 3
+# ROAD = 0
+# CITY = 1
+# PACKAGE = 2
+# DAY = 0
+# NIGHT = 1
+# PACKAGE_APPR = 10
+# directions = [[-1,0],[1,0],[0,-1],[0,1]]
 class GridDelivery:
     """
     Class contructor takes dimensions m and n by defualt they will be 5 and 5
@@ -79,8 +79,6 @@ class GridDelivery:
         self.traffic_prob = configDict["TRAFFIC"]
         # reward function on operational cost and pickup earnings
         self.rewards = configDict["REWARDS"]
-        # policy for step function
-        self.policy = policy_dict(configDict["POLICY"])
 
 
         # initialize maps
@@ -98,6 +96,9 @@ class GridDelivery:
         # [isRushHour, TruckX, TruckY, [PkgsPos]*max_package]
         self.state_vector_dims = tuple([2]+[self.m, self.n] + [self.m*self.n for _ in range(self.max_package)])
     
+        # policy for step function
+        self.Policy = policy_dict(configDict["POLICY"])(self)
+        self.policy = self.Policy.policy
 
     """
     Initialize package dictionary and package queue
@@ -120,12 +121,13 @@ class GridDelivery:
     Encode state into index
     """
     def encode_state(self):
-        package_idx = []
-        for pos in self.packages.values():
-            package_idx.append(self.pos2idx(pos))
-        cur_state_idx = [self._is_rush()] + [*self.truck] + package_idx
-        return np.ravel_multi_index(cur_state_idx, self.state_vector_dims)
-
+        # package_idx = []
+        # for pos in self.packages.values():
+        #     package_idx.append(self.pos2idx(pos))
+        # cur_state_idx = [self.is_rush()] + [*self.truck] + package_idx
+        # return np.ravel_multi_index(cur_state_idx, self.state_vector_dims)
+        return [self.is_rush(), self.truck, list(self.packages.values())]
+    
     def pos2idx(self, pos):
         return (pos[0]+1)*(pos[1]+1)-1
 
@@ -135,7 +137,7 @@ class GridDelivery:
     Make one minute step into future with self.policy
     """
     def step(self):
-        reward = self._get_operational_cost()
+        reward = self.get_operational_cost()
         if self.grid[PACKAGE, self.truck[0], self.truck[1]]:
             reward += self.rewards["PACKAGE"]
             self.package_update(self.truck)
@@ -152,27 +154,31 @@ class GridDelivery:
     """
     Get operational cost of this moment
     """
-    def _get_operational_cost(self):
-        if self._is_rush():
+    def get_operational_cost(self):
+        if self.is_rush():
             return self.rewards["DAY"]
         return self.rewards["NIGHT"]
 
     """
     Check if is rush hour
     """
-    def _is_rush(self):
+    def is_rush(self):
         return self.rush_hour_start < self.hour < self.rush_hour_end
 
+    def is_city(self, x, y):
+        return self.grid[CITY][x, y]
 
+    def is_highway(self, x, y):
+        return self.grid[ROAD][x, y]
     """
     Try to move truck, considering traffic condition
     """
     def move(self, action):
         if self.grid[ROAD, self.truck[0], self.truck[1]] == 1:
-            if np.random.rand() < self.traffic_prob["HIGHWAY"][self._is_rush()]/100:
+            if np.random.rand() < self.traffic_prob["HIGHWAY"][self.is_rush()]/100:
                 return self.truck
         else:
-            if np.random.rand() < self.traffic_prob["STREET"][self._is_rush()]/100:
+            if np.random.rand() < self.traffic_prob["STREET"][self.is_rush()]/100:
                 return self.truck
         x, y = self.truck[0] + directions[action][0], self.truck[1] + directions[action][1]
         if self._in_bound(x, y):
@@ -195,7 +201,9 @@ class GridDelivery:
         #         if np.random.rand() < self.package_prob["RURAL"][self._is_rush()]/100:
         #             self.package_queue.append((i, j))
         rand = np.random.random(size = (self.m, self.n))
-        candidates =np.argwhere(rand > self.package_map * self.grid[PACKAGE])
+        truck = np.ones_like(self.grid[PACKAGE])
+        truck[self.truck] = 0
+        candidates =np.argwhere(rand > self.package_map * self.grid[PACKAGE] * truck)
         cand_idx = np.random.choice(range(len(candidates)), min(num, candidates.shape[0]), replace=False)
         for cand in cand_idx:
             self.package_queue.append(tuple(candidates[cand]))
@@ -250,14 +258,17 @@ class GridDelivery:
     """
     Generate Gray scale grid maps for debug
     """
-    def plot(self):
+    def plot(self, show = True):
         truckLayer = np.zeros_like(self.grid[ROAD])
         truckLayer[self.truck] = 2
         plt.subplot(1,2,1)
         plt.imshow(self.grid[ROAD] + truckLayer*2, cmap="gray")
         plt.subplot(1,2,2)
         plt.imshow(self.grid[CITY] + self.grid[PACKAGE]*2, cmap="gray")
-        plt.show()
+        # if show:
+        #     plt.show()
+        # else:
+        #     return plt.gcf()
 
 class GridDeliveryAncker(GridDelivery):
     def __init__(self):
