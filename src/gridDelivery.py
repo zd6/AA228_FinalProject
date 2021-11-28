@@ -49,13 +49,15 @@ class GridDelivery:
     For every hour during outside rush operating cost:
         -10
     """
-    def __init__(self) -> None:
-        self.config()
+    def __init__(self, configuration = "default") -> None:
+        configFile = {"default":"config_random.json", "VI":"config_VI.json", "DQN":"config_DQN.json"}
+        self.config(configFile = configFile[configuration])
+        self.configFile = configFile[configuration]
         
     """
     Configurate the environment with file
     """
-    def config(self, configFile = "config.json"):
+    def config(self, configFile = "config_random.json"):
         # parse parameter configuration file
         configDict = parse_config(configFile)
 
@@ -136,13 +138,14 @@ class GridDelivery:
     """
     Make one minute step into future with self.policy
     """
-    def step(self):
+    def step(self, action = None):
         reward = self.get_operational_cost()
         if self.grid[PACKAGE, self.truck[0], self.truck[1]]:
             reward += self.rewards["PACKAGE"]
             self.package_update(self.truck)
         prev = self.encode_state()
-        action = self.policy(prev)
+        if action is None:
+            action = self.policy(prev)
         nextTruck = self.move(action)
         if self._in_bound(*nextTruck):
             self.truck = nextTruck
@@ -269,6 +272,46 @@ class GridDelivery:
         #     plt.show()
         # else:
         #     return plt.gcf()
+    def reset(self):
+        self.config(configFile = self.configFile)
+
+
+class GridDeliveryDQN(GridDelivery):
+    def __init__(self):
+        super().__init__(configuration="DQN")
+        self.prev_state = self.grid
+    def step(self, **kwarg):
+        s,a,r,nextS = super().step(**kwarg)
+        return self.dqnState(s), a, self.dqnState(nextS), r
+    
+    def dqnState(self, state):
+        isRush, truckPos, pkgList = state
+        """
+        1: rural
+        2: city non freeway
+        3: city freeway
+        4: pkg
+        5: truck
+        Rush:
+        1 2 3 2 1
+        2 2 3 2 2
+        3 3 5 3 3
+        2 4 4 2 2
+        1 2 4 2 1
+        nonRush:
+        -Rush
+        """
+        encoded = np.zeros((self.m, self.n))
+        encoded += self.grid[CITY] + 1
+        encoded += self.grid[ROAD]
+        for pkg in pkgList:
+            encoded[pkg] = 4
+        encoded[truckPos] = 5
+        encoded = -1*encoded if not isRush else encoded
+        encoded = np.reshape(encoded, (-1,))
+        return encoded
+        
+    
 
 class GridDeliveryAncker(GridDelivery):
     def __init__(self):

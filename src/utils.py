@@ -1,17 +1,9 @@
 import json
 from policy import RandomPolicy, VI
-
-CHANNELS = 3
-ROAD = 0
-CITY = 1
-PACKAGE = 2
-DAY = 0
-NIGHT = 1
-PACKAGE_APPR = 10
-directions = [[-1,0],[1,0],[0,-1],[0,1]]
+from const import *
 
 def parse_config(configFile):
-    f = open("config.json",)
+    f = open(configFile,)
     return json.load(f)
     
 def policy_dict(policy_name):
@@ -19,3 +11,5 @@ def policy_dict(policy_name):
         return RandomPolicy
     if policy_name == "VI":
         return VI
+    if policy_name == "DQN":
+        return RandomPolicy

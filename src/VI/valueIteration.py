@@ -1,7 +1,6 @@
 import numpy as np
-from utils import *
+from const import *
 # U[s], T[s,a,s'], R[s,a]
-
 
 class VI:
     def __init__(self, grid):
