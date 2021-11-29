@@ -10,7 +10,7 @@
     "CITY": 2,
     "MAX_PACKAGES": 3,
     "PACKAGE": {"CITY": 20, "RURAL":10},
-    "TRAFFIC": {"HIGHWAY": [50, 10], "STREET":[20, 0]},
+    "TRAFFIC": {"HIGHWAY": [30, 5], "STREET":[10, 0]},
     "REWARDS": {"NIGHT": -10, "DAY":-5, "PACKAGE":100},
     "POLICY": "VI"
 }

@@ -1,3 +1,10 @@
+
+import sys
+import pdb
+  
+# setting path
+sys.path.append('..')
+
 from torch.autograd import grad
 from gridDelivery import GridDeliveryDQN
 
@@ -9,21 +16,25 @@ import torch.nn as nn
 import torch.optim as optim
 from tqdm import tqdm
 
-from DQN.DQN import *
+from DQN.model import *
 
-BATCH_SIZE = 1440
+BATCH_SIZE = 1000
 GAMMA = 0.99
 EPS_START = 0.9
 EPS_END = 0.05
-EPS_DECAY = 200
+EPS_DECAY = 20000
 TARGET_UPDATE = 10
+
+DONE_DAYS = 2
 
 steps_done = 0
 
-env = GridDeliveryDQN()
+env = GridDeliveryDQN(configuration = "default")
 
-policy_net = DQN(env.m*env.n)
-target_net = DQN(env.m*env.n)
+INPUT_DIM = 9
+
+policy_net = DQN(INPUT_DIM)
+target_net = DQN(INPUT_DIM)
 target_net.load_state_dict(policy_net.state_dict())
 target_net.eval()
 optimizer = optim.Adam(policy_net.parameters())
@@ -43,7 +54,8 @@ def select_action(state):
         with torch.no_grad():
             return policy_net(state).max(1)[1].view(1, 1)
     else:
-        return torch.tensor([[random.randrange(4)]], dtype=torch.long)
+        randAction = [random.randrange(4)]
+        return torch.tensor([randAction], dtype=torch.long)
 
 
 def optimize_model():
@@ -64,7 +76,6 @@ def optimize_model():
     state_batch = torch.cat(batch.state)
     action_batch = torch.cat(batch.action)
     reward_batch = torch.cat(batch.reward)
-
     # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
     # columns of actions taken. These are the actions which would've been taken
     # for each batch state according to policy_net
@@ -79,36 +90,42 @@ def optimize_model():
     next_state_values[non_final_mask] = target_net(non_final_next_states).max(1)[0]
     # Compute the expected Q values
     expected_state_action_values = (next_state_values * GAMMA) + reward_batch
+    # print(state_action_values[np.where(expected_state_action_values > 0)])
 
     # Compute Huber loss
     criterion = nn.MSELoss()
     loss = criterion(state_action_values, expected_state_action_values.unsqueeze(1))
-
     # Optimize the model
     optimizer.zero_grad()
     loss.backward()
-    grad_list = []
+    # grad_list = []
     for param in policy_net.parameters():
-        # print("mark", param.grad)
         param.grad.data.clamp_(-1, 1)
-        grad_list.append(param.grad.data)
-    # print(grad_list)
-    # print([torch.linalg.norm(torch.tensor(grad)) for grad in grad_list])
     optimizer.step()
+    # with torch.no_grad():
+    #     state_action_v = policy_net(state_batch).gather(1, action_batch)
+    #     print('mark', state_action_v[np.where(expected_state_action_values > 0)])
 
 
 def train():
-    num_episodes = 50
+    num_episodes = 100
     for i_episode in tqdm(range(num_episodes)):
         # Initialize the environment and state
         env.reset()
-        state = torch.from_numpy(np.expand_dims(env.dqnState(env.encode_state()), axis=0)).float()
+        env.truck = (np.random.randint(0, env.m), np.random.randint(0, env.n))
+        state = torch.from_numpy(np.expand_dims(env.encode_state(), axis=0)).float()
         accum_reward = 0
         day = 0
+        global steps_done
+        eps_threshold = EPS_END + (EPS_START - EPS_END) * \
+                        np.exp(-1. * steps_done / EPS_DECAY)
+        print(eps_threshold)
+        actions = []
         while True:
             # Select and perform an action
             action = select_action(state)
-            _, _, next_state, reward = env.step(action = action.item())
+            actions += list(action.flatten().tolist())
+            _, action_taken, reward, next_state = env.step(action = action.item())
             accum_reward += reward
             reward = torch.tensor([reward])
             next_state = torch.tensor(np.expand_dims(next_state, axis = 0)).float()
@@ -116,14 +133,14 @@ def train():
             # Observe new state
             if env.hour > 23.99:
                 day += 1
-            if day == 7:
+            if day == DONE_DAYS:
                 done = True
                 next_state = None
 
 
             # Store the transition in memory
             memory.push([state, action, next_state, reward])
-
+            # print(len(memory))
             # Move to the next state
             state = next_state
 
@@ -131,12 +148,13 @@ def train():
             optimize_model()
             # print(env.hour, accum_reward, done)
             if done:
-                episode_accum_reward.append(accum_reward)
+                episode_accum_reward.append(accum_reward/DONE_DAYS)
                 break
         # Update the target network, copying all weights and biases in DQN
         if i_episode % TARGET_UPDATE == 0:
             target_net.load_state_dict(policy_net.state_dict())
-        np.savetxt("trainHistory.txt", np.array(episode_accum_reward))
+        np.savetxt("trainHistory.txt", episode_accum_reward)
+        torch.save(policy_net.state_dict(), 'nets/policy_net_{0}.pickle'.format(i_episode))
     print('Complete')
 if __name__ == "__main__":
     train()

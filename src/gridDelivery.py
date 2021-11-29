@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.core.fromnumeric import sort
 from utils import *
 from collections import deque
 import matplotlib.pyplot as plt
@@ -277,15 +278,24 @@ class GridDelivery:
 
 
 class GridDeliveryDQN(GridDelivery):
-    def __init__(self):
-        super().__init__(configuration="DQN")
+    def __init__(self, configuration="DQN"):
+        super().__init__(configuration=configuration)
         self.prev_state = self.grid
-    def step(self, **kwarg):
-        s,a,r,nextS = super().step(**kwarg)
-        return self.dqnState(s), a, self.dqnState(nextS), r
+    def step(self, action = None):
+        reward = self.get_operational_cost()
+        if self.grid[PACKAGE, self.truck[0], self.truck[1]]:
+            reward += self.rewards["PACKAGE"]
+            self.package_update(self.truck)
+        prev = self.encode_state()
+        if action is None:
+            action = self.policy(prev)
+        nextTruck = self.move(action)
+        if self._in_bound(*nextTruck):
+            self.truck = nextTruck
+        self.hour  = (self.hour + 1/60)%24
+        return prev, action, reward, self.encode_state()
     
-    def dqnState(self, state):
-        isRush, truckPos, pkgList = state
+    def encode_state(self):
         """
         1: rural
         2: city non freeway
@@ -301,14 +311,13 @@ class GridDeliveryDQN(GridDelivery):
         nonRush:
         -Rush
         """
-        encoded = np.zeros((self.m, self.n))
-        encoded += self.grid[CITY] + 1
-        encoded += self.grid[ROAD]
-        for pkg in pkgList:
-            encoded[pkg] = 4
-        encoded[truckPos] = 5
-        encoded = -1*encoded if not isRush else encoded
-        encoded = np.reshape(encoded, (-1,))
+        truckPos, pkgList = self.truck, list(self.packages.values())
+        sortedPkg = sorted(pkgList, key = lambda pos: (pos[0] - truckPos[0])**2 + (pos[1] - truckPos[1])**2)
+        encoded = [self.hour, *truckPos]
+        for pkg in sortedPkg:
+            encoded += [*pkg]
+        for _ in range(0, 3 - len(sortedPkg)):
+            encoded += [-1, -1]
         return encoded
         
     

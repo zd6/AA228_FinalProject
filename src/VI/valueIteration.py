@@ -1,4 +1,5 @@
 import numpy as np
+from VI.approximate_T import constructT
 from const import *
 # U[s], T[s,a,s'], R[s,a]
 
@@ -64,3 +65,22 @@ class VI:
             U = newU
             k += 1
         return U
+
+class SampleVI(VI):
+    def __init__(self, grid):
+        self.grid = grid
+        self.rush_T, self.not_rush_T = constructT(env = grid)
+        print('init')
+        self.replan()
+    def replan(self):
+        self.costKey = "DAY" if self.grid.is_rush() else "NIGHT"
+        self.T = np.copy(self.rush_T) if self.costKey == "DAY" else np.copy(self.not_rush_T)
+        U = np.zeros(self.grid.m*self.grid.n + 1)
+        self.R = np.ones((self.grid.m*self.grid.n+1, 4))*self.grid.rewards[self.costKey]
+        self.R[-1,:] = [0,0,0,0]
+        for x, y in self.grid.packages_pos_to_id.keys():
+            self.R[self.pos_2_idx(x, y),:] += self.grid.rewards["PACKAGE"]
+            self.T[self.pos_2_idx(x, y), :, :] = 0
+            self.T[self.pos_2_idx(x, y), :, -1] = 1
+        self.U = self.valueIteration(U,self.T,self.R,0.99)
+        self.curPkg = list(self.grid.packages.values())

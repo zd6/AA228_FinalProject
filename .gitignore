@@ -1,0 +1,5 @@
+**/nets
+**/nets_0
+*.txt
+*.pickle
+*.ipynb

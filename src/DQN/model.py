@@ -1,5 +1,8 @@
-from gridDelivery import GridDeliveryDQN
-
+import sys
+import pdb
+  
+# setting path
+sys.path.append('..')
 from collections import deque, namedtuple
 import random
 
@@ -23,12 +26,14 @@ class DQN(nn.Module):
     def __init__(self, inputSize) -> None:
         super(DQN, self).__init__()
         self.l1 = nn.Linear(inputSize, 32)
+        nn.init.xavier_uniform_(self.l1.weight)
         self.l2= nn.Linear(32, 128)
-        self.l3 = nn.Linear(128, 256)
-        self.head = nn.Linear(256, 4)
+        nn.init.xavier_uniform_(self.l2.weight)
+        self.l3= nn.Linear(128, 64)
+        nn.init.xavier_uniform_(self.l2.weight)
+        self.head = nn.Linear(64, 4)
     def forward(self, x):
-        x = F.normalize(x)
-        x = F.relu(F.normalize((self.l1(x))))
-        x = F.relu(F.normalize(self.l2(x)))
-        x = F.relu(F.normalize(self.l3(x)))
+        x = F.relu(self.l1(x))
+        x = F.relu(self.l2(x))
+        x = F.relu(self.l3(x))
         return self.head(x)
