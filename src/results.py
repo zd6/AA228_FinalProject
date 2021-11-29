@@ -96,10 +96,10 @@ def testSampleVI(time = 1):
 
 if __name__ == "__main__":
     # testRandom(time = 1)
-    testGreedy(time = 1)
+    # testGreedy(time = 1)
     # testVI(time = 1)
-    # testSampleVI(time = 1)
-    # testDQN(time = 1)
+    testSampleVI(time = 1)
+    testDQN(time = 1)
 
     
 
