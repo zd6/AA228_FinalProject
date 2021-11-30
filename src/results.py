@@ -13,12 +13,7 @@ def testRandom(time = 5):
             rewards.append([env.is_rush(), reward])
         rewards_stat.append(rewards)
     rewards_stat = np.array(rewards_stat)
-    # np.savetxt("RandomTest.txt", rewards_stat)
-    plt.clf()
-    plt.xlabel("Reward During 1 Day")
-    plt.ylabel("Trails out of 100")
-    plt.hist(np.sum(rewards_stat[:,:,1], axis=1))
-    plt.savefig("results/RandomTest.png")
+    np.save("results/RandomTest", rewards_stat)
 
 def testGreedy(time = 5):
     env = GridDelivery()
@@ -32,11 +27,8 @@ def testGreedy(time = 5):
         rewards_stat.append(rewards)
     rewards_stat = np.array(rewards_stat)
     # np.savetxt("RandomTest.txt", rewards_stat)
-    plt.clf()
-    plt.xlabel("Reward During 1 Day")
-    plt.ylabel("Trails out of 100")
-    plt.hist(np.sum(rewards_stat[:,:,1], axis=1))
-    plt.savefig("results/GreedyTest.png")
+    np.save("results/GreedyTest", rewards_stat)
+
 
 def testVI(time = 1):
     env = GridDelivery()
@@ -50,11 +42,8 @@ def testVI(time = 1):
         rewards_stat.append(rewards)
     rewards_stat = np.array(rewards_stat)
     # np.savetxt("RandomTest.txt", rewards_stat)
-    plt.clf()
-    plt.xlabel("Reward During 1 Day")
-    plt.ylabel("Trails out of 100")
-    plt.hist(np.sum(rewards_stat[:,:,1], axis=1))
-    plt.savefig("results/VITest.png")
+    np.save("results/VITest", rewards_stat)
+
 
 def testDQN(time = 1):
     env = GridDeliveryDQN()
@@ -68,11 +57,8 @@ def testDQN(time = 1):
         rewards_stat.append(rewards)
     rewards_stat = np.array(rewards_stat)
     # np.savetxt("RandomTest.txt", rewards_stat)
-    plt.clf()
-    plt.xlabel("Reward During 1 Day")
-    plt.ylabel("Trails out of 100")
-    plt.hist(np.sum(rewards_stat[:,:,1], axis=1))
-    plt.savefig("results/DQNTest.png")
+    np.save("results/DQNTest", rewards_stat)
+
 
 def testSampleVI(time = 1):
     env = GridDelivery()
@@ -86,18 +72,14 @@ def testSampleVI(time = 1):
         rewards_stat.append(rewards)
     rewards_stat = np.array(rewards_stat)
     # np.savetxt("RandomTest.txt", rewards_stat)
-    plt.clf()
-    plt.hist(np.sum(rewards_stat[:,:,1], axis=1))
-    plt.xlabel("Reward During 1 Day")
-    plt.ylabel("Trails out of 100")
-    plt.savefig("results/SampleVITest.png")
+    np.save("results/SampleVITest", rewards_stat)
 
 
 
 if __name__ == "__main__":
-    # testRandom(time = 1)
-    # testGreedy(time = 1)
-    # testVI(time = 1)
+    testRandom(time = 1)
+    testGreedy(time = 1)
+    testVI(time = 1)
     testSampleVI(time = 1)
     testDQN(time = 1)
 
