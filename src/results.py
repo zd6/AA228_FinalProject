@@ -46,11 +46,10 @@ def testVI(time = 1):
 
 
 def testDQN(time = 1):
-    env = GridDeliveryDQN()
-    env.config(configFile="config_DQN.json")
     rewards_stat = []
     for _ in tqdm(range(100)):
         rewards = []
+        env = GridDeliveryDQN()
         for _ in range(time*24*60):
             _,_,reward,_ = env.step()
             rewards.append([env.is_rush(), reward])
@@ -77,10 +76,10 @@ def testSampleVI(time = 1):
 
 
 if __name__ == "__main__":
-    testRandom(time = 1)
-    testGreedy(time = 1)
-    testVI(time = 1)
-    testSampleVI(time = 1)
+    # testRandom(time = 1)
+    # testGreedy(time = 1)
+    # testVI(time = 1)
+    # testSampleVI(time = 1)
     testDQN(time = 1)
 
     

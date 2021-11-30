@@ -32,6 +32,7 @@ class DQNPolicy:
     def __init__(self, env) -> None:
         self.policy_net = DQN(9)
         self.policy_net.load_state_dict(torch.load("DQN/nets/policy_net_99.pickle"))
+        self.policy_net.eval()
     def policy(self, state):
-        return self.policy_net(torch.tensor(state).float()).max(0)[1].item()
+        return self.policy_net(torch.tensor([state]).float()).max(1)[1].item()
 # U[s], T[s,a,s'], R[s,a]

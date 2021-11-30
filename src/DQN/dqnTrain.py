@@ -18,14 +18,14 @@ from tqdm import tqdm
 
 from DQN.model import *
 
-BATCH_SIZE = 1000
-GAMMA = 0.99
+BATCH_SIZE = 500
+GAMMA = 0.90
 EPS_START = 0.9
 EPS_END = 0.05
 EPS_DECAY = 20000
 TARGET_UPDATE = 10
 
-DONE_DAYS = 2
+DONE_DAYS = 1
 
 steps_done = 0
 
@@ -37,7 +37,8 @@ policy_net = DQN(INPUT_DIM)
 target_net = DQN(INPUT_DIM)
 target_net.load_state_dict(policy_net.state_dict())
 target_net.eval()
-optimizer = optim.Adam(policy_net.parameters())
+optimizer = optim.SGD(policy_net.parameters(), lr = 0.001)
+scheduler = optim.lr_scheduler.StepLR(optimizer, step_size = 10, gamma=0.5)
 memory = ReplayMemory(10000)
 
 
@@ -102,9 +103,6 @@ def optimize_model():
     for param in policy_net.parameters():
         param.grad.data.clamp_(-1, 1)
     optimizer.step()
-    # with torch.no_grad():
-    #     state_action_v = policy_net(state_batch).gather(1, action_batch)
-    #     print('mark', state_action_v[np.where(expected_state_action_values > 0)])
 
 
 def train():
@@ -112,7 +110,7 @@ def train():
     for i_episode in tqdm(range(num_episodes)):
         # Initialize the environment and state
         env.reset()
-        env.truck = (np.random.randint(0, env.m), np.random.randint(0, env.n))
+        # env.truck = (np.random.randint(0, env.m), np.random.randint(0, env.n))
         state = torch.from_numpy(np.expand_dims(env.encode_state(), axis=0)).float()
         accum_reward = 0
         day = 0
@@ -120,11 +118,9 @@ def train():
         eps_threshold = EPS_END + (EPS_START - EPS_END) * \
                         np.exp(-1. * steps_done / EPS_DECAY)
         print(eps_threshold)
-        actions = []
         while True:
             # Select and perform an action
             action = select_action(state)
-            actions += list(action.flatten().tolist())
             _, action_taken, reward, next_state = env.step(action = action.item())
             accum_reward += reward
             reward = torch.tensor([reward])
@@ -145,11 +141,14 @@ def train():
             state = next_state
 
             # Perform one step of the optimization (on the policy network)
-            optimize_model()
+            for _ in range(5):
+                optimize_model()
             # print(env.hour, accum_reward, done)
             if done:
                 episode_accum_reward.append(accum_reward/DONE_DAYS)
                 break
+        scheduler.step()
+        print([paramgroup['lr'] for paramgroup in optimizer.param_groups])
         # Update the target network, copying all weights and biases in DQN
         if i_episode % TARGET_UPDATE == 0:
             target_net.load_state_dict(policy_net.state_dict())

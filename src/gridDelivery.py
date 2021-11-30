@@ -312,8 +312,8 @@ class GridDeliveryDQN(GridDelivery):
         -Rush
         """
         truckPos, pkgList = self.truck, list(self.packages.values())
-        sortedPkg = sorted(pkgList, key = lambda pos: (pos[0] - truckPos[0])**2 + (pos[1] - truckPos[1])**2)
-        encoded = [self.hour, *truckPos]
+        sortedPkg = sorted(pkgList, key = lambda pos: abs(pos[0] - truckPos[0]) + abs(pos[1] - truckPos[1]))
+        encoded = [self.is_rush(), *truckPos]
         for pkg in sortedPkg:
             encoded += [*pkg]
         for _ in range(0, 3 - len(sortedPkg)):
