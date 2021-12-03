@@ -2,4 +2,4 @@
 **/nets_0
 *.txt
 *.pickle
-*.ipynb
+src/sandbox.ipynb

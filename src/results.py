@@ -74,13 +74,23 @@ def testSampleVI(time = 1):
     np.save("results/SampleVITest", rewards_stat)
 
 
-
+import time
 if __name__ == "__main__":
-    # testRandom(time = 1)
-    # testGreedy(time = 1)
-    # testVI(time = 1)
-    # testSampleVI(time = 1)
+    start = time.time()
+    testRandom(time = 1)
+    print("Random Policy Runtime", time.time() - start)
+    start = time.time()
+    testGreedy(time = 1)
+    print("Greedy Policy Runtime", time.time() - start)
+    start = time.time()
+    testVI(time = 1)
+    print("VI Policy Runtime", time.time() - start)
+    start = time.time()
+    testSampleVI(time = 1)
+    print("SampleVI Policy Runtime", time.time() - start)
+    start = time.time()
     testDQN(time = 1)
+    print("DQN Policy Runtime", time.time() - start)
 
     
 
